@@ -1,9 +1,9 @@
 class DataStore(object):
     def get(self, path):
-        return self.get(path)
+        return self._get(path)
 
     def set(self, path, data):
-        return self.set(path, data)
+        return self._set(path, data)
 
     def _get(self, path):
         raise NotImplementedError()
