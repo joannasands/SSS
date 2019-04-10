@@ -1,17 +1,23 @@
 class DataStore(object):
-    def set(path, data):
+    def get(self, path):
+        return self.get(path)
+
+    def set(self, path, data):
+        return self.set(path, data)
+
+    def _get(self, path):
         raise NotImplementedError()
 
-    def get(path):
+    def _set(self, path, data):
         raise NotImplementedError()
 
 
-class DictionaryStor(DataStore):
+class DictionaryStore(DataStore):
     def __init__(self):
         self._d = dict()
 
-    def set(path, data):
-        self._d[path] = data
-
-    def get(path):
+    def _get(self, path):
         return self._d[path]
+
+    def _set(self, path, data):
+        self._d[path] = data
