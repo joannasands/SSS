@@ -56,8 +56,8 @@ class Client(object):
             raise ValueError()
         self.root_hash = root_header.subtree_hash
 
-    def get_node(self, ident):
-        data = self.cache.get(ident)
+    def get_node(self, node_hash):
+        data = self.cache.get(node_hash)
         return Node.deserialize(data)
 
     def create_node(self, headers):
@@ -66,7 +66,7 @@ class Client(object):
         return node
 
     def hash_path(self, path):
-        abs_path = os.path.normpath(os.join('/', path))
+        abs_path = os.path.normpath(os.join('/', path)).encode('utf-8')
         return self.h(abs_path).hexdigest()
 
     def get_trace(self, key):

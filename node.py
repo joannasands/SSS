@@ -19,7 +19,8 @@ class Node(object):
     			return child
     	return None
 
-
+    def header(self):
+        raise NotImplementedError()
 
 
 class Header(object):
@@ -27,15 +28,15 @@ class Header(object):
 
 	def __init__(self, subtree_hash, is_leaf, key_upperbound):
 		self.subtree_hash = subtree_hash
-		self.is_leaf = is_leaf
 		self.key_upperbound = key_upperbound
+		self.is_leaf = is_leaf
 
     @staticmethod
     def deserialize(data):
     	raise NotImplementedError()
 
 	def serialize(self):
-		raise NotImplementedError()
+        return bytes.fromhex(self.subtree_hash) + bytes.fromhex(self.key_upperbound) + bytes([self.is_leaf])
 
 
 #needs serialize, list of h1,....hk, list
