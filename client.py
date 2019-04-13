@@ -1,9 +1,10 @@
 import bisect
 import hashlib
 import os
+import copy
 
 from .datastore import DictionaryStore
-from .node import Node
+from .node import Node, Header
 
 
 class Cache(object):
@@ -17,7 +18,7 @@ class Cache(object):
 
     def get(self, key):
         if key not in self.d:
-            data = store.get(key)
+            data = self.store.get(key)
             if self.h(data).hexdigest() != key:
                 raise ValueError()
             self.d[key] = data
@@ -25,7 +26,7 @@ class Cache(object):
 
     def add(self, data):
         key = self.h(data).hexdigest()
-        store.set(key, data)
+        self.store.set(key, data)
         self.d[key] = data
         return key
 
@@ -66,14 +67,15 @@ class Client(object):
         return node
 
     def hash_path(self, path):
-        abs_path = os.path.normpath(os.join('/', path)).encode('utf-8')
+        abs_path = os.path.normpath(os.path.join('/', path)).encode('utf-8')
         return self.h(abs_path).hexdigest()
 
     def get_trace(self, key):
+        node = self.get_node(self.root_hash)
         header = self.get_node(self.root_hash).header()
         trace = []
         while header is not None and not header.is_leaf:
-            trace.push(header)
+            trace.append(header)
             node = self.get_node(header.subtree_hash)
             if node is not None:
                 header = node.get_child_header_for(key)
@@ -96,27 +98,31 @@ class Client(object):
                 raise ValueError()
             else:
                 trace.pop()
-        node = self.get_node(header.subtree_hash)
+        # node = self.get_node(trace.pop().subtree_hash)
         headers_to_remove = []
-        headers_to_add = [Node.make_header(subtree_hash=value, is_leaf=True, key=key)]
+        headers_to_add = [Header(subtree_hash=value, key_upperbound=key,is_leaf=True)]
+
         while trace:
             node = self.get_node(trace.pop().subtree_hash)
             headers = list(node.children)
+            # headers = copy.deepcopy(node.children)
             while headers_to_remove:
                 headers.remove(headers_to_remove.pop())
             while headers_to_add:
                 bisect.insort(headers, headers_to_add.pop())
-            if len(node) >= b:
+            headers_to_remove = [node.header()]
+            if len(headers) > self.b:
                 left_node = self.create_node(headers[:b//2])
                 right_node = self.create_node(headers[b//2:])
                 headers_to_add = [left_node.header(), right_node.header()]
             else:
-                _node = create_node(headers)
-                headers_to_add = [_node.header()]
-            headers_to_remove = [node.header()]
+                node = self.create_node(headers)
+                headers_to_add = [node.header()]
         if len(headers_to_add) > 1:
             node = self.create_node(headers_to_add)
-        return node.header()
+        #uncertain if this is the correct node. pls think this through more later
+        self.root_hash = node.nodehash
+        return self.root_hash
 
     def remove(self, path):
         raise NotImplementedError()
@@ -134,7 +140,7 @@ class Client(object):
         key = self.hash_path(path)
         trace = self.get_trace(key)
         header = trace[-1]
-        if not header.is_leaf or header.key_upperbound == key:
+        if not header.is_leaf or header.key_upperbound != key:
             raise KeyError()
         data = self.cache.get(header.subtree_hash)
         return data
