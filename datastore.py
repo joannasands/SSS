@@ -25,12 +25,17 @@ class DictionaryStore(DataStore):
         self._d[path] = data
 
 class DropboxStore(DataStore):
-    def __init__(self, token):
-        self.dbx = dbx = dropbox.Dropbox(token)
+    def __init__(self, token, isTest = False):
+        self.dbx = dropbox.Dropbox(token)
+        self.isTest = isTest
 
     def _get(self, path):
+        if self.isTest:
+            total_path = "/test/" + path
+        else:
+            total_path = "/merkle/" + path
         try:
-            md, res = dbx.files_download(path)
+            md, res = self.dbx.files_download(total_path)
         except dropbox.exceptions.HttpError as err:
             print('*** HTTP error', err)
             return None
@@ -39,9 +44,13 @@ class DropboxStore(DataStore):
         return data
 
     def _set(self, path, data):
+        if self.isTest:
+            total_path = "/test/" + path
+        else:
+            total_path = "/merkle/" + path
         try:
-            res = dbx.files_upload(
-                data, path, dropbox.files.WriteMode.overwrite,
+            res = self.dbx.files_upload(
+                data, total_path, dropbox.files.WriteMode.overwrite,
                 mute=True)
         except dropbox.exceptions.ApiError as err:
             print('*** API error', err)

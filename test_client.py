@@ -11,13 +11,33 @@ def test_add_and_download():
     files = [
         ('/chris/terman.says', b'andrewhe reigns supreme'),
         ('/andrew/he.says', b'I am so f*** fast'),
-        ('/andrew/he/also.says', b'Rust is so beautiful'),
+        ('/andrew/he/also.says', b'Rust is so beautiful')
     ]
 
     for path, message in files:
         print(message)
         client.add(path, message)
 
+    for path, message in files:
+        m = client.download(path)
+        assert m == message
+
+def test_add_and_download():
+    f = open("access_key.txt", 'r')
+    store = SSS.datastore.DropboxStore(f.readline().strip(), True)
+    f.close()
+    client = SSS.client.Client(store)
+    files = [
+        ('/chris/terman.says', b'andrewhe reigns supreme'),
+        ('/andrew/he.says', b'I am so f*** fast'),
+        ('/andrew/he/also.says', b'Rust is so beautiful')
+    ]
+
+    for path, message in files:
+        print(message)
+        client.add(path, message)
+
+    client.cache.d.clear()
     for path, message in files:
         m = client.download(path)
         assert m == message

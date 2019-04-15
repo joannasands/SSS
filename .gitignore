@@ -1,3 +1,5 @@
 __pycache__
+.cache
 *.pyc
 *.sw?
+/access_key.txt
