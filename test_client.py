@@ -22,7 +22,12 @@ def test_add_and_download():
         m = client.download(path)
         assert m == message
 
-def test_add_and_download():
+    client.cache.d.clear()
+    for path, message in files:
+        m = client.download(path)
+        assert m == message
+
+def test_add_and_download_dropbox():
     f = open("access_key.txt", 'r')
     store = SSS.datastore.DropboxStore(f.readline().strip(), True)
     f.close()

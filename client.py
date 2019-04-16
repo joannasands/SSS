@@ -87,25 +87,27 @@ class Client(object):
             trace.append(header)
         return trace
 
-    def add(self, path, data):
+    def add(self, path, data, allow_overwrite=False, must_overwrite=False):
         key = self.hash_path(path)
         value = self.cache.add(data)
+        headers_to_remove = []
+        headers_to_add = [Header(subtree_hash=value, key_upperbound=key, is_leaf=True)]
         trace = self.get_trace(key)
         leaf = trace[-1]
         if leaf.is_leaf:
             if leaf.key_upperbound == key:
-                # overwrite?
-                raise ValueError()
+                if allow_overwrite:
+                    headers_to_remove.append(leaf)
+                else:
+                    raise ValueError('file {} already exists'.format(path))
             else:
+                if must_overwrite:
+                    raise ValueError('must_overwrite set but file {} not found')
                 trace.pop()
-        # node = self.get_node(trace.pop().subtree_hash)
-        headers_to_remove = []
-        headers_to_add = [Header(subtree_hash=value, key_upperbound=key,is_leaf=True)]
 
         while trace:
             node = self.get_node(trace.pop().subtree_hash)
             headers = list(node.children)
-            # headers = copy.deepcopy(node.children)
             while headers_to_remove:
                 headers.remove(headers_to_remove.pop())
             while headers_to_add:
@@ -128,7 +130,7 @@ class Client(object):
         raise NotImplementedError()
 
     def edit(self, path, data):
-        raise NotImplementedError()
+        return self.add(path, data, allow_overwrite=True, must_overwrite=True)
 
     def verify(self, path, data):
         raise NotImplementedError()
