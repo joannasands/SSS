@@ -2,7 +2,7 @@ import hashlib
 
 class Node(object):
     def __init__(self, children):
-        self.children = children
+        self.children = tuple(sorted(children))
         self.nodehash = hashlib.sha256(self.serialize()).hexdigest()
 
     @staticmethod

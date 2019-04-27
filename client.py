@@ -116,12 +116,12 @@ class Client(object):
         while trace:
             node = self.get_node(trace.pop().subtree_hash)
             headers = list(node.children)
-            # print(remove, len(trace), len(headers), len(headers_to_remove))
-            # print(headers_to_remove, headers)
             while headers_to_remove:
                 headers.remove(headers_to_remove.pop())
-            while headers_to_add:
-                bisect.insort(headers, headers_to_add.pop())
+            if headers_to_add:
+                headers.extend(headers_to_add)
+                headers.sort()
+                headers_to_add.clear()
             headers_to_remove = [node.header()]
             if len(headers) < self.b // 2 and trace:
                 parent = self.get_node(trace[-1].subtree_hash)
@@ -130,14 +130,12 @@ class Client(object):
                     assert parent.children[i] == node.header()
                     if i == 0:
                         sibling_header = parent.children[1]
-                        assert not sibling_header.is_leaf
-                        sibling = self.get_node(sibling_header.subtree_hash)
-                        headers = headers + list(sibling.children)
                     else:
                         sibling_header = parent.children[i-1]
-                        assert not sibling_header.is_leaf
-                        sibling = self.get_node(sibling_header.subtree_hash)
-                        headers = list(sibling.children) + headers
+                    assert not sibling_header.is_leaf
+                    sibling = self.get_node(sibling_header.subtree_hash)
+                    headers.extend(sibling.children)
+                    headers.sort()
                     headers_to_remove.append(sibling_header)
             if len(headers) == 1 and not headers[0].is_leaf:
                 # case where tree becomes shorter
@@ -147,6 +145,7 @@ class Client(object):
                 node = self.get_node(child.subtree_hash)
                 headers_to_add = headers
             elif len(headers) > self.b:
+                headers.sort()
                 left_node = self.create_node(headers[:self.b//2])
                 right_node = self.create_node(headers[self.b//2:])
                 headers_to_add = [left_node.header(), right_node.header()]
