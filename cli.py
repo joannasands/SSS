@@ -1,6 +1,6 @@
 import argparse
 from client import Client
-from datastore import DictionaryStore
+from datastore import DictionaryStore,DropboxStore
 
 parser = argparse.ArgumentParser(description='Takes in user input for client')
 
@@ -8,13 +8,17 @@ parser.add_argument('command',choices=['remove','add','edit','download','verify'
 parser.add_argument('dropbox_path')
 parser.add_argument('-file_path',default=None,required=False)
 parser.add_argument('-dropbox_key', default=None,required=False)
+parser.add_argument('-root', default=None,required=False)
 args = parser.parse_args()
 
 if args.dropbox_key is not None:
-	store = SSS.datastore.DropboxStore(args.dropbox_key, True)
-else: 
+	store = DropboxStore(args.dropbox_key, False)
+else:
     store = DictionaryStore()
-client = Client(store)
+if args.root is not None:
+	client = Client(store,root_hash=args.root)
+else:
+	client = Client(store)
 
 new_root = None
 file_path = args.file_path
@@ -49,7 +53,7 @@ elif args.command == 'verify':
 		f = open(args.file_path, 'r')
 		data = f.read().encode('utf-8')
 		f.close()
-		verified = client.download(args.dropbox_path,data)
+		verified = client.verify(args.dropbox_path,data)
 		if verified:
 			print("dropbox file matches data found at file path")
 		else:
