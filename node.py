@@ -44,6 +44,9 @@ class Header(object):
     def __lt__(self,other):
         return (self.key_upperbound,self.subtree_hash,self.is_leaf) < (other.key_upperbound,other.subtree_hash,other.is_leaf)
 
+    def __eq__(self,other):
+        return self.serialize() == other.serialize()
+
 #needs serialize, list of h1,....hk, list
 #list of whether the children are nodes
 #list of the upperbound of the keys of each child, or the hash if it is a leaf
