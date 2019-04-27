@@ -1,13 +1,13 @@
 import pytest
 
 # import SSS
-import SSS.client
-import SSS.datastore
-import SSS.node
+from client import Client
+from datastore import DictionaryStore, DropboxStore
+from node import Node, Header
 
 def test_add_and_download():
-    store = SSS.datastore.DictionaryStore()
-    client = SSS.client.Client(store)
+    store = DictionaryStore()
+    client = Client(store)
     files = [
         ('/chris/terman.says', b'andrewhe reigns supreme'),
         ('/andrew/he.says', b'I am so f*** fast'),
@@ -29,9 +29,9 @@ def test_add_and_download():
 
 def test_add_and_download_dropbox():
     f = open("access_key.txt", 'r')
-    store = SSS.datastore.DropboxStore(f.readline().strip(), True)
+    store = DropboxStore(f.readline().strip(), True)
     f.close()
-    client = SSS.client.Client(store)
+    client = Client(store)
     files = [
         ('/chris/terman.says', b'andrewhe reigns supreme'),
         ('/andrew/he.says', b'I am so f*** fast'),
@@ -48,8 +48,8 @@ def test_add_and_download_dropbox():
         assert m == message
 
 def test_remove():
-    store = SSS.datastore.DictionaryStore()
-    client = SSS.client.Client(store)
+    store = DictionaryStore()
+    client = Client(store)
     files = [
         ('/chris/terman.says', b'andrewhe reigns supreme'),
         ('/andrew/he.says', b'I am so f*** fast'),
@@ -75,9 +75,9 @@ def test_remove():
 
 
 def test_serialize_and_deserialize():
-    head = SSS.node.Header('2Ef0'*16,'FFFF'*16,True)
+    head = Header('2Ef0'*16,'FFFF'*16,True)
     serial = head.serialize()
-    de = SSS.node.Header.deserialize(serial)
+    de = Header.deserialize(serial)
     assert de.subtree_hash == '2ef0'*16
     assert de.key_upperbound =='ffff'*16
     assert de.is_leaf == True
