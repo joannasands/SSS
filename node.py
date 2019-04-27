@@ -25,6 +25,9 @@ class Node(object):
         upperbound = self.children[-1].key_upperbound if len(self.children) > 0 else 'FFFF'*16
         return Header(self.nodehash,upperbound,False)
 
+    def __repr__(self):
+        return '{}(nodehash={}, children={})'.format(self.__class__.__name__, self.nodehash, self.children)
+
 
 class Header(object):
     SIZE_BYTES = 65
@@ -46,6 +49,9 @@ class Header(object):
 
     def __eq__(self,other):
         return self.serialize() == other.serialize()
+
+    def __repr__(self):
+        return '{}(subtree_hash={}, key_upperbound={}, is_leaf={})'.format(self.__class__.__name__, self.subtree_hash, self.key_upperbound, self.is_leaf)
 
 #needs serialize, list of h1,....hk, list
 #list of whether the children are nodes

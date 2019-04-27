@@ -77,12 +77,9 @@ class Client(object):
         while header is not None and not header.is_leaf:
             trace.append(header)
             node = self.get_node(header.subtree_hash)
-            if node is not None:
-                header = node.get_child_header_for(key)
-                if header is None and node.children:
-                    header = node.children[-1]
-            else:
-                header = None
+            header = node.get_child_header_for(key)
+            if header is None and node.children:
+                header = node.children[-1]
         if header is not None:
             trace.append(header)
         return trace
@@ -107,25 +104,58 @@ class Client(object):
             else:
                 if must_overwrite:
                     raise ValueError('must_overwrite set but file {} not found')
+                if remove:
+                    raise ValueError('remove set but file {} not found')
             trace.pop()
+        else:
+            if must_overwrite:
+                raise ValueError('must_overwrite set but file {} not found')
+            if remove:
+                raise ValueError('remove set but file {} not found')
 
         while trace:
             node = self.get_node(trace.pop().subtree_hash)
             headers = list(node.children)
+            # print(remove, len(trace), len(headers), len(headers_to_remove))
+            # print(headers_to_remove, headers)
             while headers_to_remove:
                 headers.remove(headers_to_remove.pop())
             while headers_to_add:
                 bisect.insort(headers, headers_to_add.pop())
             headers_to_remove = [node.header()]
-            if len(headers) > self.b:
-                left_node = self.create_node(headers[:b//2])
-                right_node = self.create_node(headers[b//2:])
+            if len(headers) < self.b // 2 and trace:
+                parent = self.get_node(trace[-1].subtree_hash)
+                if len(parent.children) > 1:
+                    i = bisect.bisect_left(parent.children, node.header())
+                    assert parent.children[i] == node.header()
+                    if i == 0:
+                        sibling_header = parent.children[1]
+                        assert not sibling_header.is_leaf
+                        sibling = self.get_node(sibling_header.subtree_hash)
+                        headers = headers + list(sibling.children)
+                    else:
+                        sibling_header = parent.children[i-1]
+                        assert not sibling_header.is_leaf
+                        sibling = self.get_node(sibling_header.subtree_hash)
+                        headers = list(sibling.children) + headers
+                    headers_to_remove.append(sibling_header)
+            if len(headers) == 1 and not headers[0].is_leaf:
+                # case where tree becomes shorter
+                # must be root
+                assert not trace
+                child = headers[0]
+                node = self.get_node(child.subtree_hash)
+                headers_to_add = headers
+            elif len(headers) > self.b:
+                left_node = self.create_node(headers[:self.b//2])
+                right_node = self.create_node(headers[self.b//2:])
                 headers_to_add = [left_node.header(), right_node.header()]
             else:
                 node = self.create_node(headers)
                 headers_to_add = [node.header()]
         if len(headers_to_add) > 1:
             node = self.create_node(headers_to_add)
+        assert headers_to_remove == [self.get_node(self.root_hash).header()]
         #uncertain if this is the correct node. pls think this through more later
         #maybe we should write root hash to a file
         self.root_hash = node.nodehash
