@@ -3,8 +3,8 @@ import hashlib
 import os
 import copy
 
-from .datastore import DictionaryStore
-from .node import Node, Header
+from datastore import DictionaryStore
+from node import Node, Header
 
 
 class Cache(object):
@@ -127,6 +127,7 @@ class Client(object):
         if len(headers_to_add) > 1:
             node = self.create_node(headers_to_add)
         #uncertain if this is the correct node. pls think this through more later
+        #maybe we should write root hash to a file
         self.root_hash = node.nodehash
         return self.root_hash
 
@@ -139,8 +140,9 @@ class Client(object):
     def edit(self, path, data):
         return self._edit_tree(path, data, allow_overwrite=True, must_overwrite=True, remove=False)
 
+    #verfies that known data matches the data at that path
     def verify(self, path, data):
-        raise NotImplementedError()
+        return self.download(path) == data
 
     def ls(self, path):
         raise NotImplementedError()
