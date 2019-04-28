@@ -1,4 +1,10 @@
 import hashlib
+from enum import Enum
+
+class NodeType(Enum):
+        INTERNAL_NODE = 0
+        FILE = 1
+        DIRECTORY = 2
 
 class Node(object):
     def __init__(self, children):
@@ -23,7 +29,7 @@ class Node(object):
 
     def header(self):
         upperbound = self.children[-1].key_upperbound if len(self.children) > 0 else 'FFFF'*16
-        return Header(self.nodehash,upperbound,False)
+        return Header(self.nodehash,upperbound,NodeType.INTERNAL_NODE)
 
     def __repr__(self):
         return '{}(nodehash={}, children={})'.format(self.__class__.__name__, self.nodehash, self.children)
@@ -32,26 +38,26 @@ class Node(object):
 class Header(object):
     SIZE_BYTES = 65
 
-    def __init__(self, subtree_hash, key_upperbound, is_leaf):
+    def __init__(self, subtree_hash, key_upperbound, node_type):
         self.subtree_hash = subtree_hash
         self.key_upperbound = key_upperbound
-        self.is_leaf = is_leaf
+        self.node_type = node_type
 
     @staticmethod
     def deserialize(data):
-        return Header(data[0:32].hex(),data[32:64].hex(),bool(data[64]))
+        return Header(data[0:32].hex(),data[32:64].hex(),NodeType(data[64]))
 
     def serialize(self):
-        return bytes.fromhex(self.subtree_hash) + bytes.fromhex(self.key_upperbound) + bytes([self.is_leaf])
+        return bytes.fromhex(self.subtree_hash) + bytes.fromhex(self.key_upperbound) + bytes([self.node_type.value])
 
     def __lt__(self,other):
-        return (self.key_upperbound,self.subtree_hash,self.is_leaf) < (other.key_upperbound,other.subtree_hash,other.is_leaf)
+        return (self.key_upperbound,self.subtree_hash,self.node_type.value) < (other.key_upperbound,other.subtree_hash,other.node_type.value)
 
     def __eq__(self,other):
         return self.serialize() == other.serialize()
 
     def __repr__(self):
-        return '{}(subtree_hash={}, key_upperbound={}, is_leaf={})'.format(self.__class__.__name__, self.subtree_hash, self.key_upperbound, self.is_leaf)
+        return '{}(subtree_hash={}, key_upperbound={}, node_type={})'.format(self.__class__.__name__, self.subtree_hash, self.key_upperbound, self.node_type)
 
 #needs serialize, list of h1,....hk, list
 #list of whether the children are nodes

@@ -3,7 +3,7 @@ import pytest
 # import SSS
 from client import Client
 from datastore import DictionaryStore, DropboxStore
-from node import Node, Header
+from node import Node, Header, NodeType
 
 def test_add_and_download():
     store = DictionaryStore()
@@ -101,9 +101,9 @@ def test_large():
             assert m == message
 
 def test_serialize_and_deserialize():
-    head = Header('2Ef0'*16,'FFFF'*16,True)
+    head = Header('2Ef0'*16,'FFFF'*16,NodeType.FILE)
     serial = head.serialize()
     de = Header.deserialize(serial)
     assert de.subtree_hash == '2ef0'*16
     assert de.key_upperbound =='ffff'*16
-    assert de.is_leaf == True
+    assert de.node_type == NodeType.FILE

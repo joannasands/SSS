@@ -4,7 +4,7 @@ from datastore import DictionaryStore,DropboxStore
 
 parser = argparse.ArgumentParser(description='Takes in user input for client')
 
-parser.add_argument('command',choices=['remove','add','edit','download','verify'])
+parser.add_argument('command',choices=['remove','add','edit','download','verify','ls'])
 parser.add_argument('dropbox_path')
 parser.add_argument('-file_path',default=None,required=False)
 parser.add_argument('-dropbox_key', default=None,required=False)
@@ -60,4 +60,6 @@ elif args.command == 'verify':
 			print("dropbox file does not match data found at file path")
 	else:
 		raise ValueError("missing file_path argument, no data to verify")
+elif args.command == 'ls':
+	print(client.ls(args.dropbox_path).decode())
 print("new root: ", new_root)

@@ -40,7 +40,6 @@ class DropboxStore(DataStore):
             print('*** HTTP error', err)
             return None
         data = res.content
-        print(len(data), 'bytes; md:', md)
         return data
 
     def _set(self, path, data):

@@ -4,7 +4,7 @@ import os
 import copy
 
 from datastore import DictionaryStore
-from node import Node, Header
+from node import Node, Header, NodeType
 
 
 class Cache(object):
@@ -53,7 +53,7 @@ class Client(object):
         else:
             root = self.get_node(root_hash)
         root_header = root.header()
-        if root_header.is_leaf:
+        if root_header.node_type != NodeType.INTERNAL_NODE:
             raise ValueError()
         self.root_hash = root_header.subtree_hash
 
@@ -74,7 +74,7 @@ class Client(object):
         node = self.get_node(self.root_hash)
         header = self.get_node(self.root_hash).header()
         trace = []
-        while header is not None and not header.is_leaf:
+        while header is not None and header.node_type == NodeType.INTERNAL_NODE:
             trace.append(header)
             node = self.get_node(header.subtree_hash)
             header = node.get_child_header_for(key)
@@ -84,7 +84,7 @@ class Client(object):
             trace.append(header)
         return trace
 
-    def _edit_tree(self, path, data=None, allow_overwrite=False, must_overwrite=False,remove=False):
+    def _edit_tree(self, path, data=None, allow_overwrite=False, must_overwrite=False,remove=False, node_type=NodeType.FILE):
         key = self.hash_path(path)
         value = None
         if data:
@@ -92,10 +92,10 @@ class Client(object):
         headers_to_remove = []
         headers_to_add = []
         if data:
-            headers_to_add = [Header(subtree_hash=value, key_upperbound=key, is_leaf=True)]
+            headers_to_add = [Header(subtree_hash=value, key_upperbound=key, node_type=node_type)]
         trace = self.get_trace(key)
         leaf = trace[-1]
-        if leaf.is_leaf:
+        if leaf.node_type != NodeType.INTERNAL_NODE:
             if leaf.key_upperbound == key:
                 if allow_overwrite or remove:
                     headers_to_remove.append(leaf)
@@ -132,12 +132,12 @@ class Client(object):
                         sibling_header = parent.children[1]
                     else:
                         sibling_header = parent.children[i-1]
-                    assert not sibling_header.is_leaf
+                    assert sibling_header.node_type == NodeType.INTERNAL_NODE
                     sibling = self.get_node(sibling_header.subtree_hash)
                     headers.extend(sibling.children)
                     headers.sort()
                     headers_to_remove.append(sibling_header)
-            if len(headers) == 1 and not headers[0].is_leaf:
+            if len(headers) == 1 and headers[0].node_type == NodeType.INTERNAL_NODE:
                 # case where tree becomes shorter
                 # must be root
                 assert not trace
@@ -160,30 +160,88 @@ class Client(object):
         self.root_hash = node.nodehash
         return self.root_hash
 
+    def _add(self, path, data, allow_overwrite=False, must_overwrite=False, node_type=NodeType.FILE):
+        return self._edit_tree(path,data,allow_overwrite,must_overwrite,False,node_type)
+
+    def _add_to_dir(self, path):
+        directory = os.path.dirname(path)
+        if directory == os.path.dirname(directory):
+            return
+        base = os.path.basename(path).encode('utf-8')
+        try:
+            current_ls, node_type = self.get(directory)
+            if node_type==NodeType.FILE:
+                raise ValueError('Tried to add subdirectory to a file')
+            files = set(current_ls.split(b'\n'))
+            if base in files:
+                raise ValueError('File already exists')
+            files.add(base)
+            new_ls = b'\n'.join(sorted(files))
+            return self.edit(directory, new_ls, node_type=NodeType.DIRECTORY)
+        except KeyError:
+            self._add_to_dir(directory)
+            new_ls = base
+            return self._add(directory, new_ls, node_type=NodeType.DIRECTORY)
+
     def add(self, path, data, allow_overwrite=False, must_overwrite=False):
-        return self._edit_tree(path,data,allow_overwrite,must_overwrite,False)
+        abs_path = os.path.normpath(os.path.join('/', path))
+        self._add_to_dir(abs_path)
+        return self._add(path, data, allow_overwrite=False, must_overwrite=False, node_type=NodeType.FILE)
+
+    def _rm_from_dir(self, path):
+        directory = os.path.dirname(path)
+        if directory == os.path.dirname(directory):
+            return
+        base = os.path.basename(path).encode('utf-8')
+        current_ls, node_type = self.get(directory)
+        if node_type==NodeType.FILE:
+            raise ValueError('Tried to add subdirectory to a file')
+        files = set(current_ls.split(b'\n'))
+        if base not in files:
+            raise ValueError('File doesn\'t exist')
+        files.remove(base)
+        if not files:
+            self._rm_from_dir(directory)
+            return self._remove(directory, node_type=NodeType.DIRECTORY)
+        else:
+            new_ls = b'\n'.join(sorted(files))
+            return self.edit(directory, new_ls, node_type=NodeType.DIRECTORY)
+
+    def _remove(self, path, node_type):
+        return self._edit_tree(path,data=None,remove=True, node_type=node_type)
 
     def remove(self, path):
-        return self._edit_tree(path,data=None,remove=True)
+        abs_path = os.path.normpath(os.path.join('/', path))
+        self._rm_from_dir(abs_path)
+        return self._remove(path, NodeType.FILE)
 
-    def edit(self, path, data):
-        return self._edit_tree(path, data, allow_overwrite=True, must_overwrite=True, remove=False)
+    def edit(self, path, data, node_type=NodeType.FILE):
+        return self._edit_tree(path, data, allow_overwrite=True, must_overwrite=True, remove=False, node_type=node_type)
 
     #verfies that known data matches the data at that path
     def verify(self, path, data):
         return self.download(path) == data
 
     def ls(self, path):
-        raise NotImplementedError()
+        data, node_type = self.get(path)
+        if node_type == NodeType.DIRECTORY:
+            return data
+        raise KeyError()
 
-    def download(self, path):
+    def get(self, path):
         key = self.hash_path(path)
         trace = self.get_trace(key)
         header = trace[-1]
-        if not header.is_leaf or header.key_upperbound != key:
+        if header.node_type==NodeType.INTERNAL_NODE or header.key_upperbound != key:
             raise KeyError()
         data = self.cache.get(header.subtree_hash)
-        return data
+        return (data, header.node_type)
+
+    def download(self, path):
+        data, node_type = self.get(path)
+        if node_type == NodeType.FILE:
+            return data
+        raise KeyError()
 
     def prune(self):
         # maybe
