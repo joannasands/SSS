@@ -9,12 +9,20 @@ parser.add_argument('dropbox_path')
 parser.add_argument('-file_path',default=None,required=False)
 parser.add_argument('-dropbox_key', default=None,required=False)
 parser.add_argument('-root', default=None,required=False)
+parser.add_argument('-mode', default="db", required=False)
 args = parser.parse_args()
 
-if args.dropbox_key is not None:
-	store = DropboxStore(args.dropbox_key, False)
+if args.mode == "db":
+	if args.dropbox_key is not None:
+		store = DropboxStore(args.dropbox_key, False)
+	else:
+		f = open("access_key.txt", 'r')
+		store = DropboxStore(f.readline().strip(), False)
+elif args.mode == "disk":
+	pass
 else:
     store = DictionaryStore()
+
 if args.root is not None:
 	client = Client(store,root_hash=args.root)
 else:
