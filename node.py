@@ -14,7 +14,7 @@ class Node(object):
     @staticmethod
     def deserialize(data):
         if len(data) % Header.SIZE_BYTES:
-            raise ValueError()
+            raise ValueError('Serialized node is not a valid size')
         children = [Header.deserialize(data[i:i+Header.SIZE_BYTES]) for i in range(0, len(data), Header.SIZE_BYTES)]
         return Node(children)
 
@@ -43,8 +43,9 @@ class Header(object):
         self.key_upperbound = key_upperbound
         self.node_type = node_type
 
-    @staticmethod
-    def deserialize(data):
+    @classmethod
+    def deserialize(cls, data):
+        assert len(data) == cls.SIZE_BYTES
         return Header(data[0:32].hex(),data[32:64].hex(),NodeType(data[64]))
 
     def serialize(self):

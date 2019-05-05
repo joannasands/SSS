@@ -20,7 +20,7 @@ class Cache(object):
         if key not in self.d:
             data = self.store.get(key)
             if self.h(data).hexdigest() != key:
-                raise ValueError()
+                raise ValueError('Hash of data does not match hash key')
             self.d[key] = data
         return self.d[key]
 
@@ -54,7 +54,7 @@ class Client(object):
             root = self.get_node(root_hash)
         root_header = root.header()
         if root_header.node_type != NodeType.INTERNAL_NODE:
-            raise ValueError()
+            raise ValueError('Root hash is not an internal node')
         self.root_hash = root_header.subtree_hash
 
     def get_node(self, node_hash):
@@ -232,14 +232,14 @@ class Client(object):
         data, node_type = self.get(path)
         if node_type == NodeType.DIRECTORY:
             return data
-        raise KeyError()
+        raise KeyError('{} is a file'.format(path))
 
     def get(self, path):
         key = self.hash_path(path)
         trace = self.get_trace(key)
         header = trace[-1]
         if header.node_type==NodeType.INTERNAL_NODE or header.key_upperbound != key:
-            raise KeyError()
+            raise KeyError('Path {} not found'.format(path))
         data = self.cache.get(header.subtree_hash)
         return (data, header.node_type)
 
@@ -247,8 +247,4 @@ class Client(object):
         data, node_type = self.get(path)
         if node_type == NodeType.FILE:
             return data
-        raise KeyError()
-
-    def prune(self):
-        # maybe
-        raise NotImplementedError()
+        raise KeyError('{} is a directory'.format(path))

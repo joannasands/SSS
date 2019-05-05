@@ -35,11 +35,7 @@ class DiskStore(DataStore):
 
     def _get(self, path):
         total_path = os.path.join(self.directory, path)
-        try:
-            data = open(total_path, 'rb').read()
-        except IOError as err:
-            print('{}: {}'.format(type(err).__name__, err))
-            return None
+        data = open(total_path, 'rb').read()
         return data
 
     def _set(self, path, data):
