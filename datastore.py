@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import dropbox
 
 class DataStore(object):
@@ -24,6 +27,38 @@ class DictionaryStore(DataStore):
     def _set(self, path, data):
         self._d[path] = data
 
+
+class DiskStore(DataStore):
+    def __init__(self, directory):
+        os.makedirs(directory, exist_ok=True)
+        self.directory = directory
+
+    def _get(self, path):
+        total_path = os.path.join(self.directory, path)
+        try:
+            data = open(total_path, 'rb').read()
+        except IOError as err:
+            print('{}: {}'.format(type(err).__name__, err))
+            return None
+        return data
+
+    def _set(self, path, data):
+        total_path = os.path.join(self.directory, path)
+        if not os.path.exists(total_path):
+            fd, tmp = tempfile.mkstemp()
+            try:
+                with os.fdopen(fd, 'wb') as f:
+                    f.write(data)
+                os.replace(tmp, total_path)
+                tmp = None
+            finally:
+                if tmp is not None:
+                    try:
+                        os.unlink(tmp)
+                    except:
+                        pass
+
+
 class DropboxStore(DataStore):
     def __init__(self, token, isTest = False):
         self.dbx = dropbox.Dropbox(token)
@@ -34,11 +69,7 @@ class DropboxStore(DataStore):
             total_path = "/test/" + path
         else:
             total_path = "/merkle/" + path
-        try:
-            md, res = self.dbx.files_download(total_path)
-        except dropbox.exceptions.HttpError as err:
-            print('*** HTTP error', err)
-            return None
+        md, res = self.dbx.files_download(total_path)
         data = res.content
         return data
 
@@ -47,11 +78,7 @@ class DropboxStore(DataStore):
             total_path = "/test/" + path
         else:
             total_path = "/merkle/" + path
-        try:
-            res = self.dbx.files_upload(
-                data, total_path, dropbox.files.WriteMode.overwrite,
-                mute=True)
-        except dropbox.exceptions.ApiError as err:
-            print('*** API error', err)
-            return None
+        res = self.dbx.files_upload(
+            data, total_path, dropbox.files.WriteMode.overwrite,
+            mute=True)
         return res

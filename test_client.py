@@ -1,12 +1,12 @@
 import pytest
+import tempfile
 
 # import SSS
 from client import Client
-from datastore import DictionaryStore, DropboxStore
+from datastore import DictionaryStore, DiskStore, DropboxStore
 from node import Node, Header, NodeType
 
-def test_add_and_download():
-    store = DictionaryStore()
+def run_add_and_download(store):
     client = Client(store)
     files = [
         ('/chris/terman.says', b'andrewhe reigns supreme'),
@@ -26,26 +26,20 @@ def test_add_and_download():
     for path, message in files:
         m = client.download(path)
         assert m == message
+
+def test_add_and_download_dict():
+    store = DictionaryStore()
+    run_add_and_download(store)
+
+def test_add_and_download_disk():
+    with tempfile.TemporaryDirectory() as directory:
+        store = DiskStore(directory)
+        run_add_and_download(store)
 
 def test_add_and_download_dropbox():
-    f = open("access_key.txt", 'r')
-    store = DropboxStore(f.readline().strip(), True)
-    f.close()
-    client = Client(store)
-    files = [
-        ('/chris/terman.says', b'andrewhe reigns supreme'),
-        ('/andrew/he.says', b'I am so f*** fast'),
-        ('/andrew/he/also.says', b'Rust is so beautiful')
-    ]
-
-    for path, message in files:
-        # print(message)
-        client.add(path, message)
-
-    client.cache.d.clear()
-    for path, message in files:
-        m = client.download(path)
-        assert m == message
+    with open("access_key.txt", 'r') as f:
+        store = DropboxStore(f.readline().strip(), True)
+    run_add_and_download(store)
 
 def test_remove():
     store = DictionaryStore()

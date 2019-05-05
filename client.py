@@ -163,10 +163,13 @@ class Client(object):
     def _add(self, path, data, allow_overwrite=False, must_overwrite=False, node_type=NodeType.FILE):
         return self._edit_tree(path,data,allow_overwrite,must_overwrite,False,node_type)
 
-    def _add_to_dir(self, path):
+    def _add_to_dir(self, path, check_root=True):
         directory = os.path.dirname(path)
         if directory == os.path.dirname(directory):
-            return
+            if check_root:
+                check_root = False
+            else:
+                return
         base = os.path.basename(path).encode('utf-8')
         try:
             current_ls, node_type = self.get(directory)
@@ -179,7 +182,7 @@ class Client(object):
             new_ls = b'\n'.join(sorted(files))
             return self.edit(directory, new_ls, node_type=NodeType.DIRECTORY)
         except KeyError:
-            self._add_to_dir(directory)
+            self._add_to_dir(directory, check_root=check_root)
             new_ls = base
             return self._add(directory, new_ls, node_type=NodeType.DIRECTORY)
 
@@ -188,10 +191,13 @@ class Client(object):
         self._add_to_dir(abs_path)
         return self._add(path, data, allow_overwrite=False, must_overwrite=False, node_type=NodeType.FILE)
 
-    def _rm_from_dir(self, path):
+    def _rm_from_dir(self, path, check_root=True):
         directory = os.path.dirname(path)
         if directory == os.path.dirname(directory):
-            return
+            if check_root:
+                check_root = False
+            else:
+                return
         base = os.path.basename(path).encode('utf-8')
         current_ls, node_type = self.get(directory)
         if node_type==NodeType.FILE:
@@ -201,7 +207,7 @@ class Client(object):
             raise ValueError('File doesn\'t exist')
         files.remove(base)
         if not files:
-            self._rm_from_dir(directory)
+            self._rm_from_dir(directory, check_root=check_root)
             return self._remove(directory, node_type=NodeType.DIRECTORY)
         else:
             new_ls = b'\n'.join(sorted(files))
