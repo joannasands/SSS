@@ -8,7 +8,7 @@ parser.add_argument('command',choices=['remove','add','edit','download','verify'
 parser.add_argument('dropbox_path')
 parser.add_argument('-file_path',default=None,required=False)
 parser.add_argument('-dropbox_key', default=None,required=False)
-parser.add_argument('-root', default=None,required=False)
+parser.add_argument('-root_file', default=None,required=False)
 parser.add_argument('-mode', default="db", required=False)
 args = parser.parse_args()
 
@@ -18,13 +18,15 @@ if args.mode == "db":
 	else:
 		f = open("access_key.txt", 'r')
 		store = DropboxStore(f.readline().strip(), False)
+		f.close()
 elif args.mode == "disk":
 	pass
 else:
     store = DictionaryStore()
 
-if args.root is not None:
-	client = Client(store,root_hash=args.root)
+if args.root_file is not None:
+	hash = open(args.root_file, 'r').readlines()[-1].strip()
+	client = Client(store,root_hash=hash)
 else:
 	client = Client(store)
 
@@ -70,4 +72,10 @@ elif args.command == 'verify':
 		raise ValueError("missing file_path argument, no data to verify")
 elif args.command == 'ls':
 	print(client.ls(args.dropbox_path).decode())
-print("new root: ", new_root)
+if new_root is not None:
+	if args.root_file is not None:
+		f = open(args.root_file, 'a')
+	else:
+		f = open('merkle_root.txt', 'a')
+	f.write(new_root + "\n")
+	f.close()
