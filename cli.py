@@ -1,4 +1,5 @@
 import argparse
+import readline
 import os
 
 from client import Client
